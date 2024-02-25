@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <style>
+
+        @keyframes rotate {
+        to {
+            transform: rotate(360deg);
+        }
+        }
+
+        #waiting-indicator {
+        width: 20px;
+        height: 20px;
+        border: 4px solid #aaa;
+        border-radius: 50%;
+        border-top: 4px solid #3498db;
+        animation: rotate 1s linear infinite;
+        margin: 0 auto;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #chat-container {
+            max-width: 400px;  /* Максимальная ширина контейнера чата */
+            margin: 20px auto;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #messages {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            overflow-y: scroll;
+            height: 200px;  /* Высота окошка с прокруткой */
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        #form {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <ul id="messages">
+            {% for msg in messages['user'] %}
+                <li style="text-align: right;">{{ msg }}</li>
+            {% endfor %}
+            {% for msg in messages['bot'] %}
+                <li data-sender="bot">{{ msg }}</li>
+            {% endfor %}
+            <li id="typing-indicator" class="typing-indicator"></li>
+        </ul>
+        <form id="form" action="" method="post">
+            <input id="input" style="width: calc(100% - 80px);" autocomplete="off" />
+            <button style="width: 80px;">Отправить</button>
+        </form>
+        <button id="clear-button" onclick="clearChat()">Очистить</button>
+    </div>
+    <div id="waiting-indicator"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+        var typingIndicator = document.getElementById('typing-indicator');
+        document.getElementById('waiting-indicator').style.display = 'none';
+        socket.on('message', function(data) {
+            var ul = document.getElementById('messages');
+
+            // Удаление индикатора набора текста
+            typingIndicator.innerHTML = '';
+
+            
+            document.getElementById('waiting-indicator').style.display = 'none';
+
+            // Добавляем сообщение бота
+            var botLi = document.createElement('li');
+            botLi.style.color = 'green';
+            botLi.appendChild(document.createTextNode(data.bot));
+            ul.appendChild(botLi);
+
+            // Прокрутка вниз
+            ul.scrollTop = ul.scrollHeight;
+        });
+
+        function clearChat() {
+            var ul = document.getElementById('messages');
+            ul.innerHTML = '';  // Очистить сообщения в окошке чата
+
+            // Отправить событие на сервер для очистки хранимых сообщений
+            socket.emit('clear');
+        }
+
+        document.querySelector('form').onsubmit = function() {
+            
+            var input = document.getElementById('input');
+            var ul = document.getElementById('messages');
+
+            // Добавляем сообщение пользователя сразу
+            var userLi = document.createElement('li');
+            userLi.style.textAlign = 'right';  // Выравнивание текста вправо
+            userLi.appendChild(document.createTextNode(input.value));
+            ul.appendChild(userLi);
+
+            // Прокрутка вниз
+            ul.scrollTop = ul.scrollHeight;
+
+            document.getElementById('waiting-indicator').style.display = 'none';           
+            
+            // Прокрутка вниз после добавления "Думаю..."
+            ul.scrollTop = ul.scrollHeight;
+            // Отправляем сообщение на сервер
+            socket.emit('message', input.value);
+            document.getElementById('waiting-indicator').style.display = 'block';
+
+            
+
+            
+
+            // Очищаем поле ввода
+            input.value = '';
+
+            
+
+            return false;
+        };
+    </script>
+</body>
+</html>
